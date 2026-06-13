@@ -3,14 +3,25 @@
   "version": "1.0.0",
   "description": "Cloud-based brake press scheduling system with multi-user support",
   "type": "module",
+  "main": "backend/src/server.js",
   "scripts": {
     "dev": "concurrently \"npm run frontend:dev\" \"npm run backend:dev\"",
     "frontend:dev": "cd frontend && npm run dev",
     "backend:dev": "cd backend && npm run dev",
     "frontend:build": "cd frontend && npm run build",
     "backend:build": "cd backend && npm run build",
-    "deploy": "npm run frontend:build && npm run backend:build"
+    "build": "npm run frontend:build && npm run backend:build",
+    "start": "cd backend && npm start"
   },
+  "keywords": [
+    "brake",
+    "press",
+    "scheduler",
+    "manufacturing",
+    "firebase"
+  ],
+  "author": "",
+  "license": "MIT",
   "devDependencies": {
     "concurrently": "^8.2.2"
   }
