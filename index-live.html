@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🏭 Brake Press Scheduler - Cloud Live</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #ffffff; --bg2: #f7f7f7; --bg3: #efefef;
+      --border: #e0e0e0; --border2: #cccccc;
+      --text: #1a1a1a; --text2: #555555; --text3: #999999;
+      --blue: #1e40af; --blue-bg: #dbeafe;
+      --green: #166534; --green-bg: #dcfce7;
+      --amber: #854d0e; --amber-bg: #fef9c3;
+      --red: #991b1b; --red-bg: #fee2e2;
+      --purple: #6b21a8; --purple-bg: #f3e8ff;
+      --teal: #075985; --teal-bg: #e0f2fe;
+      --accent: #111111;
+      --radius: 7px; --radius-sm: 5px;
+      --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 14px; color: var(--text); background: var(--bg2); min-height: 100vh;
+    }
+
+    /* Auth Modal */
+    .auth-overlay {
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,.7); z-index: 1000; align-items: center; justify-content: center;
+    }
+    .auth-overlay.active { display: flex; }
+    .auth-modal {
+      background: var(--bg); border-radius: var(--radius); padding: 28px;
+      box-shadow: 0 10px 40px rgba(0,0,0,.3); max-width: 340px; width: 90%;
+    }
+    .auth-modal h3 { font-size: 18px; margin-bottom: 8px; }
+    .auth-modal p { font-size: 13px; color: var(--text2); margin-bottom: 16px; }
+    .auth-field { margin-bottom: 12px; }
+    .auth-field label { display: block; font-size: 12px; font-weight: 700; margin-bottom: 4px; color: var(--text2); }
+    .auth-field input { width: 100%; padding: 8px 10px; border: 1px solid var(--border2); border-radius: var(--radius-sm); font-size: 13px; }
+    .auth-field input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,0,0,.06); }
+    .auth-buttons { display: flex; gap: 8px; margin-top: 16px; }
+    .auth-btn { flex: 1; padding: 8px 16px; border: 1px solid var(--border2); border-radius: var(--radius-sm); font-size: 13px; cursor: pointer; background: var(--bg); color: var(--text); transition: background .15s; }
+    .auth-btn:hover { background: var(--bg2); }
+    .auth-btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .auth-btn-primary:hover { background: #333; }
+    .auth-error { color: var(--red); font-size: 12px; margin-bottom: 8px; }
+
+    /* Topbar */
+    .topbar {
+      background: var(--accent); color: #fff; padding: 0 20px;
+      display: flex; align-items: center; gap: 16px;
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 2px 6px rgba(0,0,0,.2);
+    }
+    .topbar-logo { font-size: 15px; font-weight: 700; padding: 14px 0; white-space: nowrap; }
+    .topbar-logo span { opacity: .55; font-weight: 400; }
+    .nav-tabs { display: flex; gap: 2px; flex: 1; overflow-x: auto; }
+    .nav-tab {
+      padding: 14px 16px; cursor: pointer; font-size: 13px; color: rgba(255,255,255,.6);
+      border: none; background: none; border-bottom: 3px solid transparent;
+      white-space: nowrap; transition: color .15s;
+    }
+    .nav-tab:hover { color: rgba(255,255,255,.9); }
+    .nav-tab.active { color: #fff; border-bottom-color: #fff; font-weight: 600; }
+    .nav-tab.hidden { display: none; }
+    .topbar-user {
+      margin-left: auto; font-size: 12px; color: rgba(255,255,255,.7);
+      white-space: nowrap; padding: 4px 0; border-left: 1px solid rgba(255,255,255,.2); padding-left: 16px;
+    }
+    .topbar-user strong { color: #fff; }
+    .topbar-logout {
+      margin-left: 12px; font-size: 12px; color: rgba(255,255,255,.7);
+      cursor: pointer; border: none; background: none; padding: 0;
+      text-decoration: underline; transition: color .15s;
+    }
+    .topbar-logout:hover { color: #fff; }
+
+    /* Page */
+    .page { max-width: 1200px; margin: 0 auto; padding: 20px 16px; }
+    .panel { display: none; } .panel.active { display: block; }
+    .page-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+    .page-hdr h2 { font-size: 18px; font-weight: 700; }
+
+    /* Cards */
+    .card {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px 18px;
+      margin-bottom: 14px; box-shadow: var(--shadow);
+    }
+    .card-title { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+
+    /* Buttons */
+    .btn {
+      padding: 8px 16px; border: 1px solid var(--border2); border-radius: var(--radius-sm);
+      font-size: 13px; font-family: inherit; cursor: pointer;
+      background: var(--bg); color: var(--text); transition: background .15s;
+    }
+    .btn:hover { background: var(--bg2); }
+    .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .btn-primary:hover { background: #333; }
+    .btn-success { background: #166534; color: #fff; border-color: #166534; }
+    .btn-success:hover { background: #14532d; }
+    .btn-danger { color: #c0392b; border-color: #e8b4b0; }
+    .btn-danger:hover { background: #fdf0ee; }
+    .btn-sm { padding: 4px 10px; font-size: 12px; }
+    .btn-xs { padding: 2px 7px; font-size: 11px; }
+
+    /* Forms */
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    .field label { font-size: 11px; color: var(--text2); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+    input, select { width: 100%; padding: 8px 10px; border: 1px solid var(--border2); border-radius: var(--radius-sm); font-size: 13px; background: var(--bg); color: var(--text); }
+    input:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,0,0,.06); }
+    .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    @media(max-width:700px) { .g2,.g3 { grid-template-columns: 1fr 1fr; } }
+    @media(max-width:480px) { .g2,.g3 { grid-template-columns: 1fr; } }
+
+    /* Table */
+    .table-wrap { overflow-x: auto; border-radius: var(--radius); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th { text-align: left; padding: 9px 12px; font-size: 11px; font-weight: 700; color: var(--text2); border-bottom: 1px solid var(--border); text-transform: uppercase; background: var(--bg2); }
+    tbody td { padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tbody tr:hover td { background: var(--bg2); }
+    .empty { text-align: center; padding: 32px; color: var(--text3); font-size: 13px; }
+
+    /* Toast */
+    #toast { position: fixed; bottom: 20px; right: 20px; background: #1a1a1a; color: #fff; padding: 10px 18px; border-radius: var(--radius); font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .3s; z-index: 9999; box-shadow: var(--shadow); }
+    #toast.show { opacity: 1; }
+
+    /* Dashboard stats */
+    .stat-row { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+    .stat { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; text-align: center; flex: 1; min-width: 80px; box-shadow: var(--shadow); }
+    .stat-val { font-size: 22px; font-weight: 800; line-height: 1.2; }
+    .stat-lbl { font-size: 11px; color: var(--text2); margin-top: 3px; }
+
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; white-space: nowrap; margin: 2px 0; }
+    .b0{background:var(--blue-bg);color:var(--blue)}
+    .b1{background:var(--green-bg);color:var(--green)}
+
+    .status-pill { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+    .sp-pending { background: var(--amber-bg); color: var(--amber); }
+    .sp-inprog  { background: var(--blue-bg);  color: var(--blue); }
+    .sp-done    { background: var(--green-bg); color: var(--green); }
+
+    .row-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay" id="auth-overlay">
+  <div class="auth-modal">
+    <h3>🔐 Sign In</h3>
+    <p>Email and password</p>
+    <div id="auth-error" class="auth-error"></div>
+    <div class="auth-field">
+      <label>Email</label>
+      <input type="email" id="auth-email" placeholder="you@company.com" onkeypress="if(event.key==='Enter') authSignUp()">
+    </div>
+    <div class="auth-field">
+      <label>Password</label>
+      <input type="password" id="auth-password" placeholder="Enter password" onkeypress="if(event.key==='Enter') authSignUp()">
+    </div>
+    <div class="auth-buttons">
+      <button class="auth-btn auth-btn-primary" onclick="authSignUp()">Sign Up / Login</button>
+      <button class="auth-btn" onclick="closeAuthModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOP NAV -->
+<nav class="topbar">
+  <div class="topbar-logo">🏭 Brake Press <span>Scheduler</span></div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="switchTab('dashboard')">📊 Dashboard</button>
+    <button class="nav-tab hidden" id="tab-machines-btn" onclick="switchTab('machines')">🔧 Machines</button>
+    <button class="nav-tab hidden" id="tab-parts-btn" onclick="switchTab('parts')">🧩 Parts</button>
+    <button class="nav-tab hidden" id="tab-orders-btn" onclick="switchTab('orders')">📋 Orders</button>
+  </div>
+  <div class="topbar-user">
+    <span id="user-role"></span>
+    <button class="topbar-logout" id="logout-btn" onclick="adminLogout()" style="display:none">Logout</button>
+    <button class="topbar-logout" id="login-btn" onclick="openAuthModal()">Sign In</button>
+  </div>
+</nav>
+
+<div class="page">
+  <div id="tab-dashboard" class="panel active">
+    <div class="page-hdr"><h2>Machine Queue</h2></div>
+    <div id="dash-content"></div>
+  </div>
+
+  <div id="tab-machines" class="panel">
+    <div class="page-hdr"><h2>Brake Presses</h2></div>
+    <div class="card">
+      <div class="card-title">Add / Edit Machine</div>
+      <div class="g3" style="margin-bottom:12px">
+        <div class="field"><label>Name</label><input id="m-name" placeholder="Press 1 – Amada 135t"></div>
+        <div class="field"><label>Max bend length (mm)</label><input id="m-len" type="number" placeholder="3050"></div>
+        <div class="field"><label>Setup time (min)</label><input id="m-setup" type="number" placeholder="15"></div>
+      </div>
+      <div class="g3">
+        <div class="field"><label>Default bend time (s/bend)</label><input id="m-bsec" type="number" placeholder="8"></div>
+        <div class="field"><label>Default handling (s/part)</label><input id="m-hsec" type="number" placeholder="20"></div>
+        <div class="field"><label>Notes</label><input id="m-notes" placeholder="heavy gauge only…"></div>
+      </div>
+      <div style="margin-top:14px">
+        <button class="btn btn-primary" onclick="saveMachine()">Save Machine</button>
+        <button class="btn" onclick="clearMachineForm()">Clear</button>
+      </div>
+    </div>
+    <div id="m-list"></div>
+  </div>
+
+  <div id="tab-parts" class="panel">
+    <div class="page-hdr"><h2>Part Library</h2></div>
+    <div class="card">
+      <div class="card-title">Add / Edit Part</div>
+      <div class="g3" style="margin-bottom:12px">
+        <div class="field"><label>Part Number</label><input id="p-num" placeholder="PNL-101-A"></div>
+        <div class="field"><label>Number of Bends</label><input id="p-bends" type="number" placeholder="4" min="1"></div>
+        <div class="field"><label>Notes</label><input id="p-notes" placeholder="material, gauge…"></div>
+      </div>
+      <div style="margin-top:14px">
+        <button class="btn btn-primary" onclick="savePart()">Save Part</button>
+        <button class="btn" onclick="clearPartForm()">Clear</button>
+      </div>
+    </div>
+    <div id="p-list"></div>
+  </div>
+
+  <div id="tab-orders" class="panel">
+    <div class="page-hdr"><h2>Orders</h2></div>
+    <div class="card">
+      <div class="card-title">Add / Edit Order</div>
+      <div class="g3" style="margin-bottom:12px">
+        <div class="field"><label>Job Number</label><input id="o-num" placeholder="JOB-2026-047"></div>
+        <div class="field"><label>Machine</label><select id="o-machine" onchange="updatePartsList()"><option value="">— select —</option></select></div>
+        <div class="field"><label>Due Date</label><input type="date" id="o-due"></div>
+      </div>
+      <hr style="border:none; border-top:1px solid var(--border); margin:14px 0">
+      <div class="card-title" style="margin-bottom:10px">Line Items</div>
+      <div class="g3" style="margin-bottom:10px">
+        <div class="field"><label>Part</label><select id="o-part"><option value="">— select part —</option></select></div>
+        <div class="field"><label>Quantity</label><input id="o-qty" type="number" placeholder="50" min="1"></div>
+        <div style="display:flex;align-items:flex-end"><button class="btn" onclick="addOrderLine()">+ Add Line</button></div>
+      </div>
+      <div id="o-lines" style="margin-bottom:14px"></div>
+      <div style="margin-top:14px">
+        <button class="btn btn-primary" onclick="saveOrder()">Save Order</button>
+        <button class="btn" onclick="cancelOrderEdit()">Cancel</button>
+      </div>
+    </div>
+    <div id="o-list"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+let db = { machines: [], parts: [], orders: [] };
+let isAdmin = false;
+const LS_KEY = 'bpSchedulerDB_v3';
+const BC = ['#2563eb','#16a34a','#7c3aed','#d97706','#0891b2','#dc2626','#0d9488'];
+const BDGE = ['b0','b1','b0','b1','b0','b1','b0'];
+const PRI_LBL = { high: '🔴 High', med: '🟠 Medium', low: '🟢 Low' };
+const STS_LBL = { pending: '🟠 Pending', inprog: '🔵 In progress', done: '✅ Complete' };
+const STS_CLS = { pending: 'sp-pending', inprog: 'sp-inprog', done: 'sp-done' };
+
+let orderLines = [], eMachId = null, ePartId = null, eOrdId = null;
+
+function uid() { return Math.random().toString(36).slice(2, 9); }
+function v(id) { return document.getElementById(id)?.value || ''; }
+function g(id) { return document.getElementById(id)?.value?.trim() || ''; }
+function setV(id, val) { const el = document.getElementById(id); if (el) el.value = val; }
+function numV(id) { return parseFloat(v(id)); }
+function toast(msg) { const el = document.getElementById('toast'); el.textContent = msg; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 2800); }
+function fmt(sec) { const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = Math.round(sec % 60); if (h > 0) return `${h}h ${m}m`; if (m > 0) return `${m}m ${s}s`; return `${s}s`; }
+function fmtD(d) { if (!d) return '—'; return new Date(d + 'T12:00:00').toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' }); }
+
+function saveDB() { try { localStorage.setItem(LS_KEY, JSON.stringify(db)); } catch(e) { toast('⚠ Could not save'); } }
+function loadDB() { try { const raw = localStorage.getItem(LS_KEY); if (raw) db = JSON.parse(raw); } catch(e) { } }
+
+function openAuthModal() { document.getElementById('auth-overlay').classList.add('active'); document.getElementById('auth-email').focus(); }
+function closeAuthModal() { document.getElementById('auth-overlay').classList.remove('active'); setV('auth-email', ''); setV('auth-password', ''); document.getElementById('auth-error').textContent = ''; }
+
+function authSignUp() {
+  const email = v('auth-email').trim(), pwd = v('auth-password').trim();
+  if (!email || !pwd) { document.getElementById('auth-error').textContent = '⚠ Email and password required'; return; }
+  isAdmin = true;
+  localStorage.setItem('bpSchedulerAuth', JSON.stringify({ email, isAdmin: true }));
+  closeAuthModal();
+  updateUI();
+  toast('✓ Logged in as ' + email);
+}
+
+function adminLogout() {
+  if (!confirm('Logout?')) return;
+  isAdmin = false;
+  localStorage.removeItem('bpSchedulerAuth');
+  updateUI();
+  toast('✓ Logged out');
+}
+
+function updateUI() {
+  const auth = localStorage.getItem('bpSchedulerAuth');
+  if (auth) { isAdmin = true; } else { isAdmin = false; }
+  const userEl = document.getElementById('user-role');
+  if (isAdmin) { userEl.innerHTML = '<strong>👤 Admin</strong>'; document.getElementById('logout-btn').style.display = 'inline'; document.getElementById('login-btn').style.display = 'none'; document.getElementById('tab-machines-btn').classList.remove('hidden'); document.getElementById('tab-parts-btn').classList.remove('hidden'); document.getElementById('tab-orders-btn').classList.remove('hidden'); }
+  else { userEl.innerHTML = '<strong>👁️ Guest</strong>'; document.getElementById('logout-btn').style.display = 'none'; document.getElementById('login-btn').style.display = 'inline'; document.getElementById('tab-machines-btn').classList.add('hidden'); document.getElementById('tab-parts-btn').classList.add('hidden'); document.getElementById('tab-orders-btn').classList.add('hidden'); }
+}
+
+function switchTab(name) {
+  if (!isAdmin && name !== 'dashboard') { toast('⚠ Sign in first'); return; }
+  ['dashboard','machines','parts','orders'].forEach(n => {
+    document.getElementById('tab-' + n).classList.toggle('active', n === name);
+    const tabs = document.querySelectorAll('.nav-tab:not(.hidden)');
+    tabs.forEach(t => t.classList.toggle('active', t.textContent.includes({dashboard:'Dashboard',machines:'Machines',parts:'Parts',orders:'Orders'}[n])));
+  });
+  if (name === 'dashboard') renderDashboard();
+  if (name === 'machines') renderMachList();
+  if (name === 'parts') renderPartList();
+  if (name === 'orders') { fillMachSel(); fillPartSel(); renderLines(); renderOrderList(); }
+}
+
+function saveMachine() {
+  if (!isAdmin) { toast('⚠ Sign in first'); return; }
+  const n = v('m-name').trim(), l = numV('m-len'), s = numV('m-setup'), b = numV('m-bsec'), h = numV('m-hsec'), nt = v('m-notes').trim();
+  if (!n || isNaN(l) || isNaN(s) || isNaN(b) || isNaN(h)) { toast('⚠ Fill all fields'); return; }
+  if (eMachId) { Object.assign(db.machines.find(x => x.id === eMachId), { name:n, maxLen:l, setupMin:s, bendSec:b, handleSec:h, notes:nt }); eMachId = null; }
+  else { db.machines.push({ id: uid(), name:n, maxLen:l, setupMin:s, bendSec:b, handleSec:h, notes:nt }); }
+  clearMachineForm(); saveDB(); renderMachList(); toast('✓ Machine saved');
+}
+
+function clearMachineForm() { ['m-name','m-len','m-setup','m-bsec','m-hsec','m-notes'].forEach(id => setV(id, '')); eMachId = null; }
+
+function editMachine(id) {
+  if (!isAdmin) { toast('⚠ Sign in first'); return; }
+  const m = db.machines.find(x => x.id === id);
+  setV('m-name', m.name); setV('m-len', m.maxLen); setV('m-setup', m.setupMin); setV('m-bsec', m.bendSec); setV('m-hsec', m.handleSec); setV('m-notes', m.notes || '');
+  eMachId = id; switchTab('machines');
+}
+
+function deleteMachine(id) {
+  if (!isAdmin) { toast('⚠ Sign in first'); return; }
+  if (!confirm('Delete?')) return;
+  db.machines = db.machines.filter(x => x.id !== id);
+  saveDB(); renderMachList(); toast('Deleted');
+}
+
+function renderMachList() {
+  const w = document.getElementById('m-list');
+  if (!db.machines.length) { w.innerHTML = '<p class="empty">No machines yet</p>'; return; }
+  w.innerHTML = `<div class="card" style="padding:0"><div class="table-wrap"><table><thead><tr><th>#</th><th>Name</th><th>Max length</th><th>Setup</th><th>Default bend</th><th>Default handling</th><th>Notes</th><th></th></tr></thead><tbody>${db.machines.map((m, i) => `<tr><td><span class="badge ${BDGE[i]}">M${i+1}</span></td><td><strong>${m.name}</strong></td><td>${m.maxLen} mm</td><td>${m.setupMin} min</td><td>${m.bendSec} s/bend</td><td>${m.handleSec} s/part</td><td style="color:var(--text2);font-size:12px">${m.notes || '—'}</td><td><div class="row-actions"><button class="btn btn-sm" onclick="editMachine('${m.id}')">✎</button><button class="btn btn-sm btn-danger" onclick="deleteMachine('${m.id}')">✕</button></div></td></tr>`).join('')}</tbody></table></div></div>`;
+}
+
+function savePart() {
+  if (!isAdmin) { toast('⚠ Sign in first'); return; }
+  const n = v('p-num').trim(), b = parseInt(v('p-bends')), nt = v('p-notes').trim();
+  if (!n || isNaN(b) || b < 1) { toast('⚠ Fill part fields'); return; }
+  if (ePartId) { Object.assign(db.parts.find(x => x.id === ePartId), { name:n, bends:b, notes:nt }); ePartId = null; }
+  else { db.parts.push({ id: uid(), name:n, bends:b, notes:nt }); }
+  clearPartForm(); saveDB(); renderPartList(); toast('✓ Part saved');
+}
+
+function clearPartForm() { ['p-num','p-bends','p-notes'].forEach(id => setV(id, '')); ePartId = null; }
+
+function editPart(id) {
+  if (!isAdmin) { toast('⚠ Sign in first'); return; }
+  const p = db.parts.find(x => x.id === id);
+  setV('p-num', p.name); setV('p-bends', p.bends); setV('p-notes', p.notes || '');
+  ePartId = id; switchTab('parts');
+}
+
+function deletePart(id) {
+  if (!isAdmin) { toast('⚠ Sign in first'); return; }
+  if (!confirm('Delete?')) return;
+  db.parts = db.parts.filter(x => x.id !== id);
+  saveDB(); renderPartList(); toast('Deleted');
+}
+
+function renderPartList() {
+  const w = document.getElementById('p-list');
+  if (!db.parts.length) { w.innerHTML = '<p class="empty">No parts yet</p>'; return; }
+  w.innerHTML = `<div class="card" style="padding:0"><div class="table-wrap"><table><thead><tr><th>Part #</th><th>Bends</th><th>Notes</th><th></th></tr></thead><tbody>${db.parts.map(p => `<tr><td><strong>${p.name}</strong></td><td>${p.bends}</td><td style="font-size:12px;color:var(--text2)">${p.notes || '—'}</td><td><div class="row-actions"><button class="btn btn-sm" onclick="editPart('${p.id}')">✎</button><button class="btn btn-sm btn-danger" onclick="deletePart('${p.id}')">✕</button></div></td></tr>`).join('')}</tbody></table></div></div>`;
+}
+
+function fillMachSel() {
+  const el = document.getElementById('o-machine'), cur = el.value;
+  el.innerHTML = '<option value="">— select —</option>' + db.machines.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+  if (cur) el.value = cur;
+}
+
+function updatePartsList() { fillPartSel(); }
+
+function fillPartSel() {
+  const el = document.getElementById('o-part'), cur = el.value;
+  el.innerHTML = '<option value="">— select part —</option>' + db.parts.map(p => `<option value="${p.id}">${p.name} (${p.bends} bends)</option>`).join('');
+  if (cur) el.value = cur;
+}
+
+function addOrderLine() {
+  if (!isAdmin) { toast('⚠ Sign in first'); return; }
+  const pid = v('o-part'), qty = parseInt(v('o-qty'));
+  if (!pid || isNaN(qty) || qty < 1) { toast('⚠ Select part & qty'); return; }
+  const part = db.parts.find(p => p.id === pid);
+  const mach = db.machines.find(m => m.id === v('o-machine'));
+  if (!mach) { toast('⚠ Select machine'); return; }
+  orderLines.push({ id: uid(), partId: pid, partName: part.name, bends: part.bends, qty, bsec: mach.bendSec, hsec: mach.handleSec });
+  setV('o-part', ''); setV('o-qty', '');
+  renderLines();
+}
+
+function removeOrderLine(id) {
+  if (!isAdmin) { toast('⚠ Sign in first'); return; }
+  orderLines = orderLines.filter(x => x.id !== id);
+  renderLines();
+}
+
+function renderLines() {
+  const w = document.getElementById('o-lines');
+  if (!orderLines.length) { w.innerHTML = '<p style="font-size:12px;color:var(--text3)">No line items</p>'; return; }
+  const grandTotal = orderLines.reduce((a, l) => a + (l.bends * l.qty * l.bsec) + (l.qty * l.hsec), 0);
+  w.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Part</th><th>Bends</th><th>Qty</th><th>Bend time</th><th>Handling</th><th>Subtotal</th><th></th></tr></thead><tbody>${orderLines.map(l => { const sub = (l.bends * l.qty * l.bsec) + (l.qty * l.hsec); return `<tr><td><strong>${l.partName}</strong></td><td>${l.bends}</td><td>${l.qty}</td><td>${l.bsec}s/bend</td><td>${l.hsec}s/part</td><td><strong>${fmt(sub)}</strong></td><td><button class="btn btn-sm btn-danger" onclick="removeOrderLine('${l.id}')">✕</button></td></tr>`; }).join('')}<tr style="background:var(--bg2)"><td colspan="5" style="font-weight:700;text-align:right;color:var(--text2)">Line total:</td><td><strong>${fmt(grandTotal)}</strong></td><td></td></tr></tbody></table></div>`;
+}
+
+function saveOrder() {
+  if (!isAdmin) { toast('⚠ Sign in first'); return; }
+  const num = v('o-num').trim(), mid = v('o-machine'), due = v('o-due');
+  if (!num) { toast('⚠ Job number'); return; }
+  if (!mid) { toast('⚠ Select machine'); return; }
+  if (!orderLines.length) { toast('⚠ Add line items'); return; }
+  if (!due) { toast('⚠ Set due date'); return; }
+  const mach = db.machines.find(m => m.id === mid);
+  const setup = mach.setupMin * 60;
+  const bSec = orderLines.reduce((a, l) => a + l.bends * l.qty * l.bsec, 0);
+  const hSec = orderLines.reduce((a, l) => a + l.qty * l.hsec, 0);
+  const ct = setup + bSec + hSec;
+  const rec = { id: eOrdId || uid(), num, machineId: mid, machineName: mach.name, due, lineItems: JSON.parse(JSON.stringify(orderLines)), ct, status: 'pending', completedAt: null };
+  if (eOrdId) { Object.assign(db.orders.find(x => x.id === eOrdId), rec); eOrdId = null; }
+  else { db.orders.push(rec); }
+  orderLines = []; setV('o-num',''); setV('o-machine',''); setV('o-due','');
+  renderLines(); saveDB(); renderOrderList(); switchTab('dashboard'); toast('✓ Order saved');
+}
+
+function cancelOrderEdit() { eOrdId = null; orderLines = []; setV('o-num',''); setV('o-machine',''); setV('o-due',''); renderLines(); }
+
+function editOrder(id) {
+  if (!isAdmin) { toast('⚠ Sign in first'); return; }
+  const o = db.orders.find(x => x.id === id);
+  setV('o-num', o.num); setV('o-due', o.due);
+  orderLines = JSON.parse(JSON.stringify(o.lineItems));
+  eOrdId = id; switchTab('orders');
+  setTimeout(() => { fillMachSel(); document.getElementById('o-machine').value = o.machineId; fillPartSel(); renderLines(); }, 30);
+}
+
+function deleteOrder(id) {
+  if (!isAdmin) { toast('⚠ Sign in first'); return; }
+  if (!confirm('Delete?')) return;
+  db.orders = db.orders.filter(x => x.id !== id);
+  saveDB(); renderOrderList(); renderDashboard(); toast('Deleted');
+}
+
+function setStatus(id, status) {
+  if (!isAdmin) { toast('⚠ Sign in first'); return; }
+  const o = db.orders.find(x => x.id === id); if (!o) return;
+  if (status === 'done' && o.status !== 'done') o.completedAt = new Date().toLocaleString();
+  if (status !== 'done') o.completedAt = null;
+  o.status = status;
+  saveDB(); renderDashboard(); renderOrderList();
+  toast(status === 'done' ? '✅ Complete' : status === 'inprog' ? '▶ Started' : '↩ Reopened');
+}
+
+function renderOrderList() {
+  const w = document.getElementById('o-list');
+  if (!db.orders.length) { w.innerHTML = ''; return; }
+  w.innerHTML = `<div class="card" style="padding:0;margin-top:14px"><div class="table-wrap"><table><thead><tr><th>Job #</th><th>Machine</th><th>Parts</th><th>Due</th><th>Status</th><th>Cycle time</th><th></th></tr></thead><tbody>${db.orders.map(o => `<tr><td><strong>${o.num}</strong></td><td>${o.machineName}</td><td style="font-size:11px;line-height:1.7">${o.lineItems.map(l => `${l.qty}× <strong>${l.partName}</strong>`).join('<br>')}</td><td>${fmtD(o.due)}</td><td><span class="status-pill ${STS_CLS[o.status]}">${STS_LBL[o.status]}</span></td><td><strong>${fmt(o.ct)}</strong></td><td><div class="row-actions">${o.status !== 'done' ? `<button class="btn btn-xs btn-success" onclick="setStatus('${o.id}','done')">✓ Done</button>` : ''} ${o.status === 'pending' ? `<button class="btn btn-xs" onclick="setStatus('${o.id}','inprog')">▶ Start</button>` : ''} <button class="btn btn-xs" onclick="editOrder('${o.id}')">✎</button><button class="btn btn-xs btn-danger" onclick="deleteOrder('${o.id}')">✕</button></div></td></tr>`).join('')}</tbody></table></div></div>`;
+}
+
+function renderDashboard() {
+  const w = document.getElementById('dash-content');
+  if (!db.machines.length) { w.innerHTML = '<p class="empty">Add machines first</p>'; return; }
+  if (!db.orders.length) { w.innerHTML = '<p class="empty">No orders — create them in Orders tab</p>'; return; }
+  const total = db.orders.length, done = db.orders.filter(o => o.status === 'done').length, inprog = db.orders.filter(o => o.status === 'inprog').length, pending = db.orders.filter(o => o.status === 'pending').length, pct = total ? Math.round(done / total * 100) : 0;
+  w.innerHTML = `<div class="stat-row"><div class="stat"><div class="stat-val">${total}</div><div class="stat-lbl">Total</div></div><div class="stat"><div class="stat-val" style="color:var(--amber)">${pending}</div><div class="stat-lbl">Pending</div></div><div class="stat"><div class="stat-val" style="color:var(--blue)">${inprog}</div><div class="stat-lbl">In progress</div></div><div class="stat"><div class="stat-val" style="color:var(--green)">${done}</div><div class="stat-lbl">Done</div></div><div class="stat"><div class="stat-val" style="font-size:16px">${pct}%</div><div class="stat-lbl">Complete</div></div></div>` + db.machines.map((m, mi) => { const mOrders = db.orders.filter(o => o.machineId === m.id); if (!mOrders.length) return `<div class="card"><strong>${m.name}</strong>: No orders</div>`; return `<div class="card"><strong>${m.name}</strong> (${mOrders.length} orders)<ul style="margin-top:8px;list-style:none">${mOrders.map(o => `<li style="padding:4px 0;font-size:12px">• ${o.num} - <span class="status-pill ${STS_CLS[o.status]}">${STS_LBL[o.status]}</span> - Due ${fmtD(o.due)}</li>`).join('')}</ul></div>`; }).join('');
+}
+
+loadDB();
+updateUI();
+renderDashboard();
+</script>
+
+</body>
+</html>
