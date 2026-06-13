@@ -1,0 +1,17 @@
+{
+  "name": "brake-press-scheduler",
+  "version": "1.0.0",
+  "description": "Cloud-based brake press scheduling system with multi-user support",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"npm run frontend:dev\" \"npm run backend:dev\"",
+    "frontend:dev": "cd frontend && npm run dev",
+    "backend:dev": "cd backend && npm run dev",
+    "frontend:build": "cd frontend && npm run build",
+    "backend:build": "cd backend && npm run build",
+    "deploy": "npm run frontend:build && npm run backend:build"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
